@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="DevBoard — платформа управления задачами: спринты, релизы, нагрузка команды." />
+  <title>DevBoard — управление задачами</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+
+  <script>
+    (function () {
+      const saved = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = saved || (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+
+      const accent = localStorage.getItem("accent");
+      if (accent) {
+        document.documentElement.style.setProperty("--accent", accent);
+        const h = accent.replace("#", "");
+        const n = parseInt(h, 16);
+        const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",");
+        document.documentElement.style.setProperty("--accent-rgb", rgb);
+      }
+
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme")) {
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+        }
+      });
+    })();
+  </script>
+</head>
+<body>
+  <!-- 5.2 skip link -->
+  <a href="#main-content" class="skip-link">Перейти к основному контенту</a>
+
+  <header class="app-header">
+    <button class="burger" id="burger" type="button" aria-label="Меню" aria-expanded="false" aria-controls="app-nav">
+      <span></span><span></span><span></span>
+    </button>
+    <h1>DevBoard</h1>
+    <p>Спринты, релизы, нагрузка команды</p>
+
+    <div class="theme-switcher">
+      <label for="theme-select" class="sr-only">Тема</label>
+      <select id="theme-select" aria-label="Выбор темы">
+        <option value="light">Светлая</option>
+        <option value="dark">Тёмная</option>
+        <option value="corporate">Corporate</option>
+      </select>
+      <label for="accent-picker" class="sr-only">Акцентный цвет</label>
+      <input type="color" id="accent-picker" value="#38bdf8" aria-label="Акцентный цвет" />
+    </div>
+  </header>
+
+  <nav class="app-nav" id="app-nav" aria-label="Навигация">
+    <ul>
+      <li><a href="#sprints">Спринты</a></li>
+      <li><a href="#releases">Релизы</a></li>
+      <li><a href="#team">Команда</a></li>
+      <li><a href="#feedback">Обратная связь</a></li>
+    </ul>
+  </nav>
+
+  <div class="overlay" id="overlay"></div>
+
+  <main class="app-main" id="main-content">
+    <!-- 5.1 Табы -->
+    <div class="tabs" role="tablist" aria-label="Разделы">
+      <button class="tab" id="tab-sprints" role="tab" aria-selected="true"  aria-controls="panel-sprints"  tabindex="0">Спринты</button>
+      <button class="tab" id="tab-releases" role="tab" aria-selected="false" aria-controls="panel-releases" tabindex="-1">Релизы</button>
+      <button class="tab" id="tab-team" role="tab" aria-selected="false" aria-controls="panel-team"     tabindex="-1">Команда</button>
+      <button class="tab" id="tab-feedback" role="tab" aria-selected="false" aria-controls="panel-feedback" tabindex="-1">Обратная связь</button>
+    </div>
+
+    <!-- Панель: спринты -->
+    <section id="panel-sprints" role="tabpanel" aria-labelledby="tab-sprints" tabindex="0">
+      <h2>Спринты</h2>
+
+      <form class="filters" role="search" aria-label="Фильтры">
+        <p class="field">
+          <label for="filter-search">Поиск</label>
+          <input type="search" id="filter-search" placeholder="Название или цель" />
+        </p>
+
+        <p class="field">
+          <label for="filter-status">Статус</label>
+          <select id="filter-status">
+            <option value="">Все</option>
+            <option value="Завершён">Завершён</option>
+            <option value="Активен">Активен</option>
+            <option value="Планируется">Планируется</option>
+            <option value="Черновик">Черновик</option>
+          </select>
+        </p>
+
+        <fieldset class="field checkboxes">
+          <legend>Приоритет</legend>
+          <label class="check"><input type="checkbox" name="pr" value="high"><span>Высокий</span></label>
+          <label class="check"><input type="checkbox" name="pr" value="medium"><span>Средний</span></label>
+          <label class="check"><input type="checkbox" name="pr" value="low"><span>Низкий</span></label>
+        </fieldset>
+
+        <button type="button" id="filter-reset" class="btn btn--ghost">Сбросить</button>
+      </form>
+
+      <ul class="card-list" data-list="sprints"></ul>
+    </section>
+
+    <!-- Панель: релизы -->
+    <section id="panel-releases" role="tabpanel" aria-labelledby="tab-releases" tabindex="0" hidden>
+      <div class="panel-head">
+        <h2>Релизы</h2>
+
+        <!-- 5.1 Dropdown-меню -->
+        <div class="dropdown" id="sort-dropdown">
+          <button class="btn btn--ghost" id="sort-btn" type="button"
+                  aria-haspopup="menu" aria-expanded="false" aria-controls="sort-menu">
+            Сортировка ▾
+          </button>
+          <ul class="dropdown__menu" id="sort-menu" role="menu" aria-labelledby="sort-btn">
+            <li role="menuitem" tabindex="-1" data-sort="version">По версии</li>
+            <li role="menuitem" tabindex="-1" data-sort="name">По названию</li>
+            <li role="menuitem" tabindex="-1" data-sort="status">По статусу</li>
+            <li role="menuitem" tabindex="-1" data-sort="releaseDate">По дате</li>
+            <li role="menuitem" tabindex="-1" data-sort="environment">По окружению</li>
+          </ul>
+        </div>
+      </div>
+
+      <table class="release-table">
+        <caption>Список релизов проекта</caption>
+        <thead>
+          <tr>
+            <th scope="col">Версия</th>
+            <th scope="col">Название</th>
+            <th scope="col">Статус</th>
+            <th scope="col">Дата</th>
+            <th scope="col">Окружение</th>
+          </tr>
+        </thead>
+        <tbody data-table="releases"></tbody>
+      </table>
+    </section>
+
+    <!-- Панель: команда -->
+    <section id="panel-team" role="tabpanel" aria-labelledby="tab-team" tabindex="0" hidden>
+      <h2>Нагрузка команды</h2>
+      <ul class="card-list" data-list="team"></ul>
+    </section>
+
+    <!-- Панель: форма (5.3) -->
+    <section id="panel-feedback" role="tabpanel" aria-labelledby="tab-feedback" tabindex="0" hidden>
+      <h2>Обратная связь</h2>
+
+      <form class="feedback" id="feedback-form" novalidate>
+        <p class="field">
+          <label for="fb-name">Имя <span aria-hidden="true">*</span></label>
+          <input type="text" id="fb-name" name="name" required aria-required="true" />
+          <span class="error" id="fb-name-error" role="alert"></span>
+        </p>
+
+        <p class="field">
+          <label for="fb-email">Email <span aria-hidden="true">*</span></label>
+          <input type="email" id="fb-email" name="email" required aria-required="true" />
+          <span class="error" id="fb-email-error" role="alert"></span>
+        </p>
+
+        <p class="field">
+          <label for="fb-msg">Сообщение <span aria-hidden="true">*</span></label>
+          <textarea id="fb-msg" name="message" rows="4" required aria-required="true"></textarea>
+          <span class="error" id="fb-msg-error" role="alert"></span>
+        </p>
+
+        <button type="submit" class="btn">Отправить</button>
+      </form>
+    </section>
+  </main>
+
+  <aside class="app-aside" aria-label="Итого">
+    <h2>Итого</h2>
+    <p data-summary="total"></p>
+  </aside>
+
+  <footer class="app-footer">
+    <address>Связь: <a href="mailto:dreamteam@devboard.io">dreamteam@devboard.io</a></address>
+    <p>&copy; 2026 DevBoard</p>
+  </footer>
+
+  <!-- 5.1 Toast-регион -->
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Модальное окно -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal__box">
+      <button class="modal__close" id="modal-close" type="button" aria-label="Закрыть">×</button>
+      <div class="modal__body" id="modal-body"></div>
+      <footer class="modal__footer">
+        <button type="button" class="btn" id="modal-ok">Понятно</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="render.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
